@@ -42,27 +42,23 @@ xlabel('x [km]')
 ylabel('y [km]')
 zlabel('z [km]')
 
-% figure
-% [X,Y,Z] = sphere(50);
-% C(:,:,1) = .85.*ones(size(X,1));
-% C(:,:,2) = .85.*ones(size(X,1));
-% C(:,:,3) = .85.*ones(size(X,1));
-% surf(X*Hr*.99, Y*Hr*.99, Z*Hr*.99, C, 'FaceAlpha',.5)
-% lighting phong
-% shading interp
-% hold on;
+figure
+[X,Y,Z] = sphere(50);
+C(:,:,1) = .85.*ones(size(X,1));
+C(:,:,2) = .85.*ones(size(X,1));
+C(:,:,3) = .85.*ones(size(X,1));
+surf(X*Hr*.99, Y*Hr*.99, Z*Hr*.99, C, 'FaceAlpha',.5)
+lighting phong
+shading interp
+hold on;
 
-% for ii = 1:size(y,1)
-%     hr(ii,:) = (I*y(ii,10:12)')';
-% end
-% plot3(hr(:,1),hr(:,2),hr(:,3),'.','LineWidth',2)
-% axis equal
-plot3(y(:,10),y(:,11),y(:,12),'k','LineWidth',1)
-title('Quaternion')
-xlabel('x')
-ylabel('y')
-zlabel('z')
+for ii = 1:size(y,1)
+    hr(ii,:) = (I*y(ii,7:9)')';
+end
+plot3(hr(:,1),hr(:,2),hr(:,3),'.','LineWidth',2)
 axis equal
+% plot3(y(:,10),y(:,11),y(:,12),'k','LineWidth',1)
+% axis equal
 
 % [t2,y2] = ode45(@(t,y) J2_prop(y,mu,J2,Re), tspan, initCond, opts);
 
