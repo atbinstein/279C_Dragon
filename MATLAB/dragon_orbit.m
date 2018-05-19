@@ -24,7 +24,7 @@ w0 = om0';
 
 initCond = [r_eci; v_eci ; w0 ; q0];
 
-orbitCount = .01;
+orbitCount = .0005;
 stopTime = orbitCount/revs_per_day*24*60*60;
 stepSize = .001;
 tspan = [0:stepSize:stopTime];
@@ -57,12 +57,30 @@ zlabel('z [km]')
 % end
 % plot3(hr(:,1),hr(:,2),hr(:,3),'.','LineWidth',2)
 % axis equal
-plot3(y(:,10),y(:,11),y(:,12),'k','LineWidth',1)
-title('Quaternion')
-xlabel('x')
-ylabel('y')
-zlabel('z')
-axis equal
+
+subplot(4,1,1);
+plot(t,y(:,10))
+xlabel('t')
+ylabel('q(1)')
+title('q(1)')
+
+subplot(4,1,2);
+plot(t,y(:,11))
+xlabel('t')
+ylabel('q(2)')
+title('q(2)')
+
+subplot(4,1,3);
+plot(t,y(:,12))
+xlabel('t')
+ylabel('q(3)')
+title('q(3)')
+
+subplot(4,1,4);
+plot(t,y(:,13))
+xlabel('t')
+ylabel('q(4)')
+title('q(4)')
 
 % [t2,y2] = ode45(@(t,y) J2_prop(y,mu,J2,Re), tspan, initCond, opts);
 
