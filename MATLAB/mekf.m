@@ -10,7 +10,7 @@ Phist(:,:,1) = P0;
 for k = 1:(size(yhist,2)-1)
    
     [x_p, A] = prediction(xhist(:,k),whist(:,k),dt);
-    yhist(:,k)
+    yhist(:,k);
     A;
     Phist(:,:,k);
     P_p = A*Phist(:,:,k)*A' + 10*W;
@@ -20,8 +20,8 @@ for k = 1:(size(yhist,2)-1)
     
     
     %Innovation
-    zq = q2phi(qmult(qconj(x_p(1:4)))*yhist(1:4,k));
-    zr = yhist(5:end,k) - yp
+    zq = q2phi(qmult(qconj(x_p(1:4)))*yhist(1:4,k+1));
+    zr = yhist(5:end,k+1) - yp(5:end);
     z = [zq;zr];
     size(C);
     size(P_p);

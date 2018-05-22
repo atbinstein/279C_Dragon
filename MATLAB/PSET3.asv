@@ -30,18 +30,18 @@ rtrue0 = [1 1 0]';
 rtrue0 = rtrue0/norm(rtrue0);
 thtrue0 = 70*pi/180;
 q0true = [rtrue0.*sin(thtrue0/2);cos(thtrue0/2)];
-w0 = [10 1 1]';
+w0 = pi/180*[1 10 1]';
 
 %Gyro Specs
-% Gyro_noise = .001*pi/180; %rad/sec/sqrt(Hz)
-Gyro_noise = .1*pi/180;
-% Gyro_WW = .001*pi/180;  %rad/sqrt(hr)
-Gyro_WW = .1*pi/180;
+Gyro_noise = .001*pi/180; %rad/sec/sqrt(Hz)
+% Gyro_noise = .1*pi/180;
+Gyro_WW = .001*pi/180;  %rad/sqrt(hr)
+% Gyro_WW = .1*pi/180;
 Egu = Gyro_noise^2*eye(3);
 Egb = Gyro_WW^2*eye(3);
 
 %GPS Specs
-ggps = .01*pi/180;
+ggps = .1*pi/180;
 Egps = ggps^2*eye(3);
 
 Vv = [Est zeros(3) zeros(3) zeros(3);
@@ -54,7 +54,7 @@ Vv = [Est zeros(3) zeros(3) zeros(3);
 
 %% Quaternion Propogation
 x0 = [w0' q0true'];
-tspan = [0:.1:60];
+tspan = [0:.1:500];
 load inertia.mat
 [t,y] = ode45(@(t,r) orb_prop(t,r,I, Egu, Egb), tspan, x0);
 q_true = y(:,4:7)';
@@ -69,7 +69,7 @@ for ii = 1:size(y,1)
     noisy_phi(:,ii) = chol(Est)*randn(3,1);
     noisy_phi(:,ii);
     qq = phi2q(noisy_phi(:,ii));
-    qq;
+    qq = 11/norm(q;
     noisy_quat(:,ii) = qmult(q_true(:,ii))*qq;
     norm(noisy_quat(:,ii));
 end
@@ -140,8 +140,7 @@ for ii = 1:size(y,1)
     B = zeros(3,3);
     B = 1/gx*rB1noisy(:,ii)*rN1' + 1/ggps*rB2noisy(:,ii)*rN2' ...
         + 1/ggps*rB3noisy(:,ii)*rN3';
-%     B = 1/gx*rB1hist(:,ii)*rN1' + 1/ggps*rB2hist(:,ii)*rN2' ...
-%         + 1/ggps*rB3hist(:,ii)*rN3';
+
     [U E V] = svd(B');
     E = eye(3);
     det(U);
@@ -208,13 +207,14 @@ title('SVD Quaternion vs. True Quaternion')
 xlabel('time (s)')
 ylabel('error (degrees)')
 legend('Estimated','True')
-% figure;
-% plot(t,qdavest(1,:),t,q_true(1,:))
-% title('Davenport Quaternion vs True Quaternion');
+
+figure;
+plot(t,qdavest(1,:),t,q_true(1,:))
+title('Davenport Quaternion vs True Quaternion');
 % 
-% figure;
-% plot(t,q_true(1,:),t,noisy_quat(1,:))
-% title('true vs noisy')
+figure;
+plot(t,q_true(1,:),t,noisy_quat(1,:))
+title('true vs noisy quaternion')
 % 
 % figure;
 % plot(t, rB3hist(1,:),t, rB3noisy(1,:))
@@ -224,14 +224,15 @@ plot(t,error)
 title('SVD Quaternion Error')
 xlabel('time (s)')
 ylabel('error (degrees)')
-figure;
-plot(t,error2)
-figure;
-plot(t,btrue(1,:))
-figure;
-plot(t,rB1hist(1,:)-rB1noisy(1,:))
+
+% figure;
+% plot(t,error2)
+% figure;
+% plot(t,btrue(1,:))
+% figure;
+% plot(t,rB1hist(1,:)-rB1noisy(1,:))
 % load mekf_truth
-dt = .05;
+dt = .11;
 save('mekf_inputs_ps3.mat','noisy_quat','rB1noisy','rB2noisy','rB3noisy', ...
     'rN1','rN2','rN3','dt','wnoisy','Vv','W','q0true')
 save('mekf_truth_ps3.mat','q_true','btrue')
@@ -239,11 +240,9 @@ save('mekf_truth_ps3.mat','q_true','btrue')
 %% Function Calls
 function dqdt = orb_prop(t,r,I, Egu, Egb)
 r(4:7,1) = r(4:7,1)/norm(r(4:7,1));
-norm(r(4:7,1));
+% norm(r(4:7,1));
 dqdt(1:3,1) = -I\cross(r(1:3), I*r(1:3));
 dqdt(4:7,1) = 1/2*qmult(r(4:7))*[r(1:3);0];
 % dqdt(8:10,1) = sqrt(Egb)*randn(3,1)*sqrt(dt);
-
-
 end
 

@@ -1,6 +1,6 @@
 function q = phi2q(phi)
 
-if norm(phi) < 10*pi/180
+if norm(phi) > 10*pi/180
     theta = norm(phi);
     r = phi/theta;
 

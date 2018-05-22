@@ -13,6 +13,6 @@ for ii = 1:size(rN,2)
     C = [C ; hat(rB(ii*3-2:ii*3)) zeros(3)];
 end
 
-y = rB(:);
+y = [q; rB(:)];
 
 end

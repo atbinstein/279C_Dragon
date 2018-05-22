@@ -4,9 +4,9 @@ clear all;close all;clc;
 
 %% Sensor Specs
 %Star Tracker specs
-sxa = 18; %arcsec
-sya = 18; %arcsec
-sza = 122; %arcsec
+sxa = 1800; %arcsec
+sya = 1800; %arcsec
+sza = 12200; %arcsec
 
 sx = sxa/2*(4.85*10^-5);
 sy = sya/2*(4.85*10^-5);
@@ -20,7 +20,7 @@ Est;
 mu = [0 0 0]';
 
 %Magno Specs
-gx = .01*pi/180; %rad
+gx = .1*pi/180; %rad
 gy = gx;
 gz = gx;
 
@@ -30,12 +30,12 @@ rtrue0 = [1 1 0]';
 rtrue0 = rtrue0/norm(rtrue0);
 thtrue0 = 70*pi/180;
 q0true = [rtrue0.*sin(thtrue0/2);cos(thtrue0/2)];
-w0 = [10 1 1]';
+w0 = pi/180*[1 10 1]';
 
 %Gyro Specs
-Gyro_noise = .001*pi/180; %rad/sec/sqrt(Hz)
+Gyro_noise = .1*pi/180; %rad/sec/sqrt(Hz)
 % Gyro_noise = .1*pi/180;
-Gyro_WW = .001*pi/180;  %rad/sqrt(hr)
+Gyro_WW = .1*pi/180;  %rad/sqrt(hr)
 % Gyro_WW = .1*pi/180;
 Egu = Gyro_noise^2*eye(3);
 Egb = Gyro_WW^2*eye(3);
@@ -69,7 +69,7 @@ for ii = 1:size(y,1)
     noisy_phi(:,ii) = chol(Est)*randn(3,1);
     noisy_phi(:,ii);
     qq = phi2q(noisy_phi(:,ii));
-    qq;
+    qq = qq/norm(qq);
     noisy_quat(:,ii) = qmult(q_true(:,ii))*qq;
     norm(noisy_quat(:,ii));
 end
@@ -120,11 +120,11 @@ end
 
 btrue = zeros(size(whist));
 for ii = 1:size(y,1)-1
-    btrue(:,ii+1) = btrue(:,ii) + sqrt(Egb)*randn(3,1);
+    btrue(:,ii+1) = btrue(:,ii) + chol(Egb)*randn(3,1);
 end
 wnoisy = zeros(size(whist));
 for ii = 1:size(y,1)
-    wnoisy(:,ii) = whist(:,ii) + btrue(:,ii) + sqrt(Egu)*randn(3,1);
+    wnoisy(:,ii) = whist(:,ii) + btrue(:,ii) + chol(Egu)*randn(3,1);
 end
 
 
@@ -232,7 +232,7 @@ ylabel('error (degrees)')
 % figure;
 % plot(t,rB1hist(1,:)-rB1noisy(1,:))
 % load mekf_truth
-dt = .05;
+dt = .11;
 save('mekf_inputs_ps3.mat','noisy_quat','rB1noisy','rB2noisy','rB3noisy', ...
     'rN1','rN2','rN3','dt','wnoisy','Vv','W','q0true')
 save('mekf_truth_ps3.mat','q_true','btrue')

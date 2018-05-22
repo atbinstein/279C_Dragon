@@ -9,7 +9,7 @@ q0 = q0true;
 V = Vv;
 
 x0 = [q0; 0; 0; 0]; %Initialize with no bias
-P0 = (10*pi/180)^2*eye(6); %10 deg. and 10 deg/sec 1-sigma uncertainty
+P0 = (1.0*pi/180)^2*eye(6); %10 deg. and 10 deg/sec 1-sigma uncertainty
 
 [xhist,Phist] = mekf(x0,P0,W,V,rN,whist,yhist,dt);
 
