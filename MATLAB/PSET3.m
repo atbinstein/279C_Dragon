@@ -4,9 +4,9 @@ clear all;close all;clc;
 
 %% Sensor Specs
 %Star Tracker specs
-sxa = 1800; %arcsec
-sya = 1800; %arcsec
-sza = 12200; %arcsec
+sxa = 18; %arcsec
+sya = 18; %arcsec
+sza = 122; %arcsec
 
 sx = sxa/2*(4.85*10^-5);
 sy = sya/2*(4.85*10^-5);
@@ -20,7 +20,7 @@ Est;
 mu = [0 0 0]';
 
 %Magno Specs
-gx = .1*pi/180; %rad
+gx = .01*pi/180; %rad
 gy = gx;
 gz = gx;
 
@@ -33,15 +33,15 @@ q0true = [rtrue0.*sin(thtrue0/2);cos(thtrue0/2)];
 w0 = pi/180*[1 10 1]';
 
 %Gyro Specs
-Gyro_noise = .1*pi/180; %rad/sec/sqrt(Hz)
+Gyro_noise = .001*pi/180; %rad/sec/sqrt(Hz)
 % Gyro_noise = .1*pi/180;
-Gyro_WW = .1*pi/180;  %rad/sqrt(hr)
+Gyro_WW = .001*pi/180;  %rad/sqrt(hr)
 % Gyro_WW = .1*pi/180;
 Egu = Gyro_noise^2*eye(3);
 Egb = Gyro_WW^2*eye(3);
 
 %GPS Specs
-ggps = .1*pi/180;
+ggps = .01*pi/180;
 Egps = ggps^2*eye(3);
 
 Vv = [Est zeros(3) zeros(3) zeros(3);
@@ -54,7 +54,7 @@ Vv = [Est zeros(3) zeros(3) zeros(3);
 
 %% Quaternion Propogation
 x0 = [w0' q0true'];
-tspan = [0:.1:60];
+tspan = [0:.1:100];
 load inertia.mat
 [t,y] = ode45(@(t,r) orb_prop(t,r,I, Egu, Egb), tspan, x0);
 q_true = y(:,4:7)';
@@ -154,7 +154,6 @@ for ii = 1:size(y,1)
     qsvdhist  = [qsvdhist qest];
     qe = qmult(qconj(q_true(:,ii)))*qest;
     trQ = [trQ trace(Qest)];
-%     e = unhat(logm(E));
     e = q2phi(qe);
     error = [error 180/pi*norm(e)];
 end
@@ -232,7 +231,7 @@ ylabel('error (degrees)')
 % figure;
 % plot(t,rB1hist(1,:)-rB1noisy(1,:))
 % load mekf_truth
-dt = .11;
+dt = .1;
 save('mekf_inputs_ps3.mat','noisy_quat','rB1noisy','rB2noisy','rB3noisy', ...
     'rN1','rN2','rN3','dt','wnoisy','Vv','W','q0true')
 save('mekf_truth_ps3.mat','q_true','btrue')

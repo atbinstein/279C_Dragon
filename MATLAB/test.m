@@ -1,15 +1,17 @@
 clear all; close all; clc;
 
 load mekf_inputs_ps3
+dt = .1;
 whist = wnoisy;
 rN = [rN1, rN2, rN3];
 yhist = [noisy_quat; rB1noisy; rB2noisy; rB3noisy];
 % yhist = [q0true; rB1hist; rB2hist; rB3hist];
-q0 = q0true;
+q0 = [0 0 0 1]';
 V = Vv;
 
 x0 = [q0; 0; 0; 0]; %Initialize with no bias
-P0 = (1.0*pi/180)^2*eye(6); %10 deg. and 10 deg/sec 1-sigma uncertainty
+P0 = [(.05*pi/180)^2*eye(3) zeros(3);
+       zeros(3) (.05*pi/180)^2*eye(3)]; %10 deg. and 10 deg/sec 1-sigma uncertainty
 
 [xhist,Phist] = mekf(x0,P0,W,V,rN,whist,yhist,dt);
 
@@ -90,4 +92,8 @@ plot(xhist(7,:)-btrue(3,:));
 hold on
 plot(2*sqrt(squeeze(Phist(6,6,:))),'r');
 plot(-2*sqrt(squeeze(Phist(6,6,:))),'r');
+figure(5);
+hold on
+plot(btrue(1,:))
+plot(xhist(5,:))
 
