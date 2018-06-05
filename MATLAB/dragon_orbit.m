@@ -118,16 +118,21 @@ title('q(4)')
 % zlabel('z [km]')
 
 function drdt = orb_prop(t,r,mu, I, rho,c,n,A)
-tauGG = cross(3*mu/(dot(r(1:3),r(1:3))^(5/2))*r(1:3), q2Q(r(10:13))*I/(1000^2)*r(1:3));
+rECI = r(1:3);
+vECI = r(4:6);
+omB = r(7:9);
+qB = r(10:13);
+
+tauGG = cross(3*mu/(dot(rECI,rECI))^(5/2))*rECI, q2Q(qB)*I/(1000^2)*rECI);
 tauGG = tauGG*1000;
-tauGGb = q2Q(r(10:13))'*tauGG
-[D, tauD] = drag(c,n,A,r(4:6),r(1:3),r(10:13))
-Dn = q2Q(r(10:13))*D/1000;
+tauGGb = q2Q(qB)'*tauGG
+[D, tauD] = drag(c,n,A,r(4:6),rECI,qB)
+Dn = q2Q(qB)*D/1000;
 M = 6000;
-r;
-drdt(1:6,1) = [r(4:6); -mu*r(1:3)/norm(r(1:3))^3 - Dn/M];
-drdt(7:9,1) = -I\(tauD + tauGGb - cross(r(7:9), I*r(7:9) + rho));
-drdt(10:13,1) = 1/2*qmult(r(10:13))*[r(7:9);0];
+
+drdt(1:6,1) = [vECI; -mu*rECI/norm(rECI)^3 - Dn/M];
+drdt(7:9,1) = -I\(tauD + tauGGb - cross(omB, I*omB + rho));
+drdt(10:13,1) = 1/2*qmult(qB)*[omB;0];
 t
 end
 

@@ -51,6 +51,8 @@ Vv = [Est zeros(3) zeros(3) zeros(3);
  
  W = [Egu zeros(3);
       zeros(3) Egb];
+  
+ save('covariance.mat','Est','Em','Egu','Egb','Egps','Vv','W')
 
 %% Quaternion Propogation
 x0 = [w0' q0true'];

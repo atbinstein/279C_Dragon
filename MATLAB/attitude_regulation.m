@@ -7,33 +7,89 @@ close all;
 
 load inertia.mat
 load drag_props.mat
+load covariance.mat
 J11 = D(1,1);
 J22 = D(2,2);
 J33 = D(3,3);
+rN1 = [1 0 0]';
+rN2 = [0 1 0]';
+rN3 = [0 0 1]';
+rN = [rN1 rN2 rN3];
 
 mu = 398600;
 J2 = 1.081874*10^-3;
 Re = 6378137*10^-3;
 tol = 1e-6;
 
-nQb0 = [0 1 0; -1 0 0; 0 0 1]; %rotation to align +y body axis with +x ECI axis
-q0 = Qtoq(nQb0);
-w0 = om0';
+% nQb0 = [0 1 0; -1 0 0; 0 0 1]; %rotation to align +y body axis with +x ECI axis
+% q0 = Qtoq(nQb0);
+qd = [0 0 0 1]'; %Desired attitude
+r = rand(3,1); r = r/norm(r);
+theta_error = pi/2*.99;
+phi0 = theta_error*r;
+q0 = phi2q(phi0); 
+% q0 = qconj(qd);
+% w0 = om0';
+w0 = [.1 .1 .1]';
+
+Kp = 10000*ones(3,1);
+Kd = 30000*ones(3,1);
 
 
 [r_eci, v_eci] = OE2ECI(a, e, inc, RAAN, w, anom, mu);
 
 initCond = [r_eci; v_eci ; w0 ; q0];
 
-orbitCount = 1;
+orbitCount = 20;
 stopTime = orbitCount/revs_per_day*24*60*60;
-stepSize = 100;
+stepSize = 3;
 tspan = [0:stepSize:stopTime];
-opts  = odeset('reltol', tol, 'abstol', tol);
+% opts  = odeset('reltol', tol, 'abstol', tol);
 rho = 0;
 
-[t,y] = ode45(@(t,y) orb_prop(t,y,mu,I,rho,c,n,A), tspan, initCond, opts);
+h = .01;
+t_final = 100;
+t = 0:h:t_final;
+y = zeros(length(initCond),length(t));
+phi = zeros(3,length(t));
+y(:,1) = initCond;
+phi(:,1) = q2phi(qmult(qconj(qd))*q0);
+theta = zeros(1,length(t));
+theta(1) = norm(phi(:,1))*180/pi;
+u = zeros(3,length(t));
+yn = zeros(size(y));
+yn(:,1) = y(:,1);
+xf = zeros(7,length(t));
+xf(1:4,1) = y(10:13,1);
+beta = zeros(3,length(t));
+P = zeros(6,6,length(t));
+P(:,:,1) = [(.05*pi/180)^2*eye(3) zeros(3);
+       zeros(3) (.05*pi/180)^2*eye(3)];
+wn = zeros(3,length(t));
+wn(:,1) = w0;
+for ii = 2:length(t)
+    [yn(1:4,ii), ~] = addNoise(y(7:13,ii-1),Est,'StarTracker',rN,beta(:,ii-1));
+    [yn(5:7,ii), ~] = addNoise(y(7:13,ii-1),Em,'Magno',rN,beta(:,ii-1));
+    [yn(8:13,ii), ~] = addNoise(y(7:13,ii-1),Egps,'GPS',rN,beta(:,ii-1));
+    [wn(:,ii), beta(:,ii)] = addNoise(y(7:13,ii-1),W,'Gyro',rN,beta(:,ii-1));
+    
+    [xf(:,ii), P(:,:,ii)] = mekfPID(xf(:,ii-1), P(:,:,ii-1), W, Vv, rN, wn(:,ii-1), yn(:,ii), h);
+    
+    
+    u(:,ii) = Kp.*phi(:,ii-1) + Kd.*wn(:,ii-1);
+    k1 = h*rk4(t(ii-1),y(:,ii-1),D,c,n,A,u(:,ii));
+    k2 = h*rk4(t(ii-1)+h/2, y(:,ii-1)+k1/2,D,c,n,A,u(:,ii));
+    k3 = h*rk4(t(ii-1)+h/2, y(:,ii-1)+k2/2,D,c,n,A,u(:,ii));
+    k4 = h*rk4(t(ii-1)+h, y(:,ii-1)+k3,D,c,n,A,u(:,ii));
+    y(:,ii) = y(:,ii-1) + (k1+2*k2+2*k3+k4)/6;
+    phi(:,ii) = q2phi(qmult(qconj(qd))*xf(1:4,ii));
+    theta(ii) = norm(phi(:,ii))*180/pi;
+end
+figure;
+plot(t,theta)
+title('Error')
 
+y = y';
 figure
 hold on
 plot3(y(:,1),y(:,2),y(:,3),'c','LineWidth',1)
@@ -43,6 +99,23 @@ hold off
 xlabel('x [km]')
 ylabel('y [km]')
 zlabel('z [km]')
+
+figure
+subplot(3,1,1)
+plot(t,y(:,7),'b','LineWidth',1)
+title('Angular Velocity Components')
+subplot(3,1,2)
+plot(t,y(:,8),'b','LineWidth',1)
+subplot(3,1,3)
+plot(t,y(:,9),'b','LineWidth',1)
+
+for ii = 1:size(y,1)
+    h(ii) = norm(I*y(ii,7:9)');
+    ii;
+end
+figure;
+plot(t,h,'b','LineWidth',1)
+title('Angular Momentum')
 
 % figure
 % [X,Y,Z] = sphere(50);
@@ -62,65 +135,56 @@ zlabel('z [km]')
 
 figure
 subplot(4,1,1);
-plot(t,y(:,10))
+plot(t,y(:,10),'b','LineWidth',1)
 xlabel('t')
 ylabel('q(1)')
 title('q(1)')
 
 subplot(4,1,2);
-plot(t,y(:,11))
+plot(t,y(:,11),'b','LineWidth',1)
 xlabel('t')
 ylabel('q(2)')
 title('q(2)')
 
 subplot(4,1,3);
-plot(t,y(:,12))
+plot(t,y(:,12),'b','LineWidth',1)
 xlabel('t')
 ylabel('q(3)')
 title('q(3)')
 
 subplot(4,1,4);
-plot(t,y(:,13))
+plot(t,y(:,13),'b','LineWidth',1)
 xlabel('t')
 ylabel('q(4)')
 title('q(4)')
 
-% [t2,y2] = ode45(@(t,y) J2_prop(y,mu,J2,Re), tspan, initCond, opts);
+figure
+subplot(3,1,1)
+plot(t,phi(1,:))
+title('Axis Angle')
+subplot(3,1,2)
+plot(t,phi(2,:))
+subplot(3,1,3)
+plot(t,phi(3,:))
 
 
-% figure
-% hold on
-% plot3(y2(:,1),y2(:,2),y2(:,3),'c','LineWidth',1)
-% earthPlot(1)
-% axis equal
-% hold off
-% xlabel('x [km]')
-% ylabel('y [km]')
-% zlabel('z [km]')
+function drdt = rk4(t,r,J,c,n,A,u)
+mu = 398600;
+rECI = r(1:3);
+vECI = r(4:6);
+omB = r(7:9);
+qB = r(10:13);
 
-function drdt = orb_prop(t,r,mu, I, rho,c,n,A)
-tauGG = cross(3*mu/(dot(r(1:3),r(1:3))^(5/2))*r(1:3), I*r(1:3));
-[D, tauD] = drag(c,n,A,r(4:6),r(1:3),r(7:10));
-Dn = q2Q(r(7:10))*D;
-tauDn = q2Q(r(7:10))*tauD/1000;
+tauGG = cross(3*mu/(dot(rECI,rECI))^(5/2)*rECI, q2Q(qB)*J/(1000^2)*rECI);
+tauGG = tauGG*1000;
+tauGGb = q2Q(qB)'*tauGG;
+[D, tauD] = drag(c,n,A,r(4:6),rECI,qB);
+Dn = q2Q(qB)*D/1000;
 M = 6000;
 
-drdt(1:6,1) = [r(4:6); -mu*r(1:3)/norm(r(1:3))^3 - Dn/M];
-drdt(7:9,1) = -I\(tauGG + tauDn - cross(r(7:9), I*r(7:9) + rho));
-drdt(10:13,1) = 1/2*qmult(r(10:13))*[r(7:9);0];
-r
-t
-end
-
-function drdt = J2_prop(r,mu,J2,Re)
-
-Z = 5*(r(3)^2)/(norm(r(1:3))^2);
-
-drdt = [r(4:6);...
-    -mu*r(1)/(norm(r(1:3))^3)*(1-3/2*J2*(Re/norm(r(1:3)))^2*(Z-1));...
-    -mu*r(2)/(norm(r(1:3))^3)*(1-3/2*J2*(Re/norm(r(1:3)))^2*(Z-1));...
-    -mu*r(3)/(norm(r(1:3))^3)*(1-3/2*J2*(Re/norm(r(1:3)))^2*(Z-3))];
-
+drdt(1:6,1) = [vECI; -mu*rECI/norm(rECI)^3 - Dn/M];
+drdt(7:9,1) = -J\(tauD + tauGGb + u - cross(omB, J*omB));
+drdt(10:13,1) = 1/2*qmult(qB)*[omB;0];
 end
 
 function [a, e, inc, RAAN, w, M, E, anom, revs_per_day] =...
