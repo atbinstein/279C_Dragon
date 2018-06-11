@@ -26,7 +26,7 @@ w0 = [0 0 0]';
 
 initCond = [r_eci; v_eci ; w0 ; q0];
 
-orbitCount = 20;
+orbitCount = 80;
 stopTime = orbitCount/revs_per_day*24*60*60;
 stepSize = 3;
 tspan = [0:stepSize:stopTime];
@@ -123,10 +123,10 @@ vECI = r(4:6);
 omB = r(7:9);
 qB = r(10:13);
 
-tauGG = cross(3*mu/(dot(rECI,rECI))^(5/2))*rECI, q2Q(qB)*I/(1000^2)*rECI);
+tauGG = cross(3*mu/((dot(rECI,rECI))^(5/2))*rECI, q2Q(qB)*I/(1000^2)*rECI);
 tauGG = tauGG*1000;
-tauGGb = q2Q(qB)'*tauGG
-[D, tauD] = drag(c,n,A,r(4:6),rECI,qB)
+tauGGb = q2Q(qB)'*tauGG;
+[D, tauD] = drag(c,n,A,r(4:6),rECI,qB);
 Dn = q2Q(qB)*D/1000;
 M = 6000;
 

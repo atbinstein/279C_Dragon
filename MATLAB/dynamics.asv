@@ -1,0 +1,170 @@
+%% Arthur Binstein
+% AA279C SADC
+% Problem Set 1
+% Inertia Tensor Calculation
+
+clear all; clc; close all;
+
+rCOM = [-.11 2.298 0]';
+r1 = [0 4.42 0]' - rCOM; %pressure chamber
+% r2 = [0 0 3.787]' - rCOM; %nose  cone
+r3 = [0 1.5 0]' - rCOM; %cargotrunk
+r4 = [-.5 1.5 0]' - rCOM; %cargo
+r5 = [-1.224 3.25 0]' - rCOM; %draco1 -x
+r6 = [0 3.25 1.224]' - rCOM; %draco2 +z
+r7 = [1.224 3.25 0]' - rCOM; %draco3 +x
+r8 = [0 3.25 -1.224]' - rCOM; %draco4 -z
+r9 = [5.85 1.5 0]' - rCOM; %solar +x
+r10 = [-5.85 1.5 0]' - rCOM; %solar -x
+r = [r1 r3 r4 r5 r6 r7 r8 r9 r10];
+
+m1 = 1778.7;
+% m2 = 475;
+m3 = 2229.9;
+m4 = 1457.4;
+m5 = 15.2;
+m6 = m5;
+m7 = m5;
+m8 = m5;
+m9 = 556.7;
+m10 = m9;
+m = [m1 m3 m4 m5 m6 m7 m8 m9 m10];
+
+I1 = [3081.1 0 0 ; 0 3241.6 0 ; 0 0 3081.1];
+% I2 = [121.46 0 0 ; 0 121.46 0 ; 0 0 187.2];
+I3 = [4919.7 0 0 ; 0 6494.5 0 ; 0 0 4919.7];
+I4 = [850.2 0 0 ; 0 728.7 0 ; 0 0 850.2];
+I5 = [.38 0 0 ; 0 .38 0 ; 0 0 .38];
+I6 = I5;
+I7 = I5;
+I8 = I5;
+I9 = [417.99 0 0 ; 0 2969.5 0; 0 0 3386.5];
+I10 = I9;
+Ic = [I1 I3 I4 I5 I6 I7 I8 I9 I10];
+
+I = zeros(3);
+for i = 1:9
+    I = I + inertia(r(:,i), m(i), Ic(:,3*i-2:3*i));
+end
+
+[pQb,D] = eig(I);
+pQb(:,1) = -pQb(:,1);
+J1 = D(1,1);
+J2 = D(2,2);
+J3 = D(3,3);
+
+W = [10 0 0];
+H = norm(D*W');
+figure;
+[X,Y,Z] = sphere(50);
+C(:,:,1) = .85.*ones(size(X,1));
+C(:,:,2) = .85.*ones(size(X,1));
+C(:,:,3) = .85.*ones(size(X,1));
+surf(X*H*.99, Y*H*.99, Z*H*.99, C, 'FaceAlpha',.75)
+lighting phong
+shading interp
+hold on;
+
+w0 = [];
+for ii = [0 .1 .5 1 1.5 2]
+    for jj = [0 .1 .5 1 1.5 2]
+        if ii == jj 
+            w = [0 ii jj];
+            w(1) = sqrt(H^2 - (J2*ii)^2 - (J3*jj)^2)/J1;
+            w0 = [w0 w];
+            w = [ii 0 jj];
+            w(2) = sqrt(H^2 - (J1*ii)^2 - (J3*jj)^2)/J2;
+            w0 = [w0 w];
+            w = [ii jj 0];
+            w(3) = sqrt(H^2 - (J1*ii)^2 - (J2*jj)^2)/J3;
+            w0 = [w0 w];
+        end
+    end
+end
+
+tspan = [0 10];
+for ii = 1:length(w0)/3
+    [t,w] = ode45(@(t,w) eulerODE(t,w,D), tspan, w0(3*ii-2:3*ii));
+    plot3(J1*w(:,1),J2*w(:,2),J3*w(:,3),'-','LineWidth',1)
+    plot3(-J1*w(:,1),-J2*w(:,2),-J3*w(:,3),'-','LineWidth',1)
+
+    axis equal
+end
+title('Momentum Sphere')
+xlabel('x')
+ylabel('y')
+zlabel('z')
+
+Wdes = [0 10 0]'; %principle frame
+Wdesb = pQb'*Wdes;
+Jeff = 1.2*J3;
+ws = norm(Wdes);
+rho_s = (Jeff - J2)*ws;
+rho = [Wdesb -hat(Wdesb)]*[Wdesb';hat(Wdesb)]\...
+      [Wdesb -hat(Wdesb)]*[ws*rho_s; cross(-Wdesb,I*Wdesb)]
+  
+Hr = norm(I*Wdesb + rho);
+
+% Wdesb = pQb'*Wdes;
+w0 = [];
+for ii = [0 .1 .5 1 4 6]
+    w = [0 0 ii]';
+    w(2) = (sqrt(Hr^2 - (J1*0)^2 - (J3*ii)^2))/J2;
+    w = pQb'*w;
+    w0 = [w0 w'];
+end
+
+om0 = w0(end-2:end);
+save('inertia.mat','I', 'pQb', 'D', 'om0', 'rho','Hr')
+
+figure;
+surf(X*Hr*.99, Y*Hr*.99, Z*Hr*.99, C, 'FaceAlpha',.75)
+lighting phong
+shading interp
+hold on;
+
+for ii = 1:length(w0)/3
+    [t om] = ode45(@(t,om) safeODE(t,om,I,rho), tspan, w0(3*ii-2:3*ii));
+    for jj = 1:size(om,1)
+        hr(jj,:) = (I*om(jj,:)')';
+    end
+    plot3(hr(:,1),hr(:,2),hr(:,3),'.','LineWidth',2)
+    axis equal
+end
+title('Spin Stabilized Momentum Sphere')
+xlabel('x')
+ylabel('y')
+zlabel('z')
+
+p_err = [];
+for ii = 1:size(om,1)
+    omN = om(ii,:)/norm(om(ii,:));
+    p_err = [p_err acos(dot(omN,[0 1 0]'))*180/pi];
+end
+figure;
+plot(p_err,'LineWidth',1)
+title('Pointing Error 
+
+function dwsdt = safeODE(t,om,I, rho)
+dwsdt = -I\cross(om, I*om + rho);
+
+end
+
+function dwdt = eulerODE(t,w,D)
+
+J1 = D(1,1);
+J2 = D(2,2);    
+J3 = D(3,3);
+
+dwdt = zeros(3,1);
+dwdt(1) = -(J3-J2)*w(2)*w(3)/J1;
+dwdt(2) = -(J1-J3)*w(1)*w(3)/J2;
+dwdt(3) = -(J2-J1)*w(1)*w(2)/J3;
+
+end
+
+function I = inertia(r, m, Ix)
+
+I = Ix + m*(r'*r*eye(3) - r*r');
+
+end

@@ -25,7 +25,7 @@ tol = 1e-6;
 % q0 = Qtoq(nQb0);
 qd = [0 0 0 1]'; %Desired attitude
 r = rand(3,1); r = r/norm(r);
-theta_error = pi/2*.99;
+theta_error = .1;
 phi0 = theta_error*r;
 q0 = phi2q(phi0); 
 % q0 = qconj(qd);
@@ -33,8 +33,8 @@ q0 = phi2q(phi0);
 w0 = [.1 .1 .1]';
 
 Kp = 10000*ones(3,1);
-Kd = 30000*ones(3,1);
-
+Kd = 100000*ones(3,1);
+    
 
 [r_eci, v_eci] = OE2ECI(a, e, inc, RAAN, w, anom, mu);
 
@@ -47,8 +47,8 @@ tspan = [0:stepSize:stopTime];
 % opts  = odeset('reltol', tol, 'abstol', tol);
 rho = 0;
 
-h = .01;
-t_final = 100;
+h = .1;
+t_final = 500;
 t = 0:h:t_final;
 y = zeros(length(initCond),length(t));
 phi = zeros(3,length(t));
@@ -86,19 +86,20 @@ for ii = 2:length(t)
     theta(ii) = norm(phi(:,ii))*180/pi;
 end
 figure;
-plot(t,theta)
+plot(t,theta,'LineWidth',2)
 title('Error')
+RMS = sum(theta)/length(theta)
 
 y = y';
-figure
-hold on
-plot3(y(:,1),y(:,2),y(:,3),'c','LineWidth',1)
-earthPlot(1)
-axis equal
-hold off
-xlabel('x [km]')
-ylabel('y [km]')
-zlabel('z [km]')
+% figure
+% hold on
+% plot3(y(:,1),y(:,2),y(:,3),'c','LineWidth',1)
+% earthPlot(1)
+% axis equal
+% hold off
+% xlabel('x [km]')
+% ylabel('y [km]')
+% zlabel('z [km]')
 
 figure
 subplot(3,1,1)
@@ -114,7 +115,7 @@ for ii = 1:size(y,1)
     ii;
 end
 figure;
-plot(t,h,'b','LineWidth',1)
+plot(t,h,'b','LineWidth',2)
 title('Angular Momentum')
 
 % figure

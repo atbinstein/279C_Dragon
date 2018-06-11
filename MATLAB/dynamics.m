@@ -136,6 +136,17 @@ xlabel('x')
 ylabel('y')
 zlabel('z')
 
+p_err = [];
+for ii = 1:size(om,1)
+    omN = om(ii,:)/norm(om(ii,:));
+    p_err = [p_err acos(dot(omN,[0 1 0]'))*180/pi];
+end
+figure;
+plot(t,p_err,'LineWidth',1)
+title('Safe Mode Pointing Error')
+xlabel('Time (s)')
+ylabel('Error (degrees)')
+
 function dwsdt = safeODE(t,om,I, rho)
 dwsdt = -I\cross(om, I*om + rho);
 

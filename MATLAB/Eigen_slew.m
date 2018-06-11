@@ -1,55 +1,58 @@
 %EignAxis Slew - Large Angle Maneuver
 clear all; close all; clc;
 load inertia.mat
-
+% D = diag([50000 50000 50000]);
 %% Plan optimal trajectory and control
 qd = [0 0 0 1]'; %Desired attitude
 % q0 = [1 2 3 4]';
-r = [1 2 3]'; r = r/norm(r);
-theta_error = pi*.99;
+r = rand(3,1); r = r/norm(r);
+theta_error = -pi*.99;
 phi0 = theta_error*r;
 q0 = phi2q(phi0);
 q0 = q0/norm(q0);
-phi0 = q2phi(qmult(qconj(q0))*qd);
+phi0 = q2phi(qmult(q0)*qd);
 theta0 = norm(phi0);
-r = phi0/theta0;
-% thetaf = theta_error;
-tf = 10;
+tf = 32;
 a = pi/tf;
-dt = .5;
+dt = .2;
 t = 0:dt:tf;
-thetaOpt = theta0*1/2*(1-cos(a*t));
+thetaOpt = theta0 - theta0*1/2*(1-cos(a*t));
 om = zeros(3,length(t));
-% phiOpt = thetaOpt.*r;
-for ii = 2:length(t)
-    qOpt(:,ii) = qmult(q0)*phi2q(.5*r*theta0*(1-cos(a*t(ii))));
-    omOpt(:,ii) = .5*r*theta0*a*sin(a*t(ii));
-    domOpt(:,ii) = .5*r*theta0*a*a*cos(a*t(ii));
+phiOpt = thetaOpt.*r;
+for ii = 1:length(t)
+%     qOpt(:,ii) = qmult(q0)*qconj(phi2q(.5*r*theta0*(1-cos(a*t(ii)))));
+    qOpt(:,ii) = phi2q(phiOpt(:,ii));
+    omOpt(:,ii) = -.5*r*theta0*a*sin(a*t(ii));
+    domOpt(:,ii) = -.5*r*theta0*a*a*cos(a*t(ii));
     tauOpt(:,ii) = D*domOpt(:,ii) + cross(omOpt(:,ii), D*omOpt(:,ii));
 end
-save('EigenStates.mat','qOpt','omOpt','tauOpt');
+save('EigenStates.mat','qOpt','omOpt','tauOpt','dt','q0','qd','D');
 
-% figure
-% plot(t,thetaOpt)
-% title('Theta')
-% figure
-% plot(t,vecnorm(omOpt))
-% title('Omega')
-% figure
-% plot(t,vecnorm(domOpt))
-% title('Alpha')
-% figure
-% plot(t,vecnorm(tauOpt))
-% title('Control')
+figure;
+plot(t,thetaOpt)
+title('Theta')
 
+vecplot(t,phiOpt)
+title('phi')
 
+vecplot(t,omOpt)
+title('Omega')
+
+vecplot(t,domOpt)
+title('Alpha')
+
+vecplot(t,tauOpt)
+title('Control')
+
+vecplot(t,qOpt)
+title('Quaternion')
 
 % Now I have an optimal control plan/trajectory
 
 %% LQR 
-max_dev_phi = 1*pi/180*[1 1 1]';
-max_dev_om = 10*pi/180*[1 1 1]';
-max_ctrl = 100*[1 1 1]';
+max_dev_phi = .5*pi/180*[1 1 1]';
+max_dev_om = .5*pi/180*[1 1 1]';
+max_ctrl = 50*[1 1 1]';
 % max_dev = [max_dev_phi; max_dev_om; max_dev_tau];
 
 Q = diag(([max_dev_phi; max_dev_om]).^(-2));
@@ -101,19 +104,19 @@ J2 = 1.081874*10^-3;
 Re = 6378137*10^-3;
 tol = 1e-6;
 
-q0 = qmult(q0)*phi2q([1 0 0]');
+q0 = qmult(q0)*phi2q(-[0 0 .5]');
 % q0 = q0;
 qd = [0 0 0 1]';
 % q0 = qconj(qd);
 % w0 = om0';
-w0 = [.1 0 0]';
+w0 = [0 0 -.01]';
 
 [r_eci, v_eci] = OE2ECI(a, e, inc, RAAN, w, anom, mu);
 
 initCond = [r_eci; v_eci ; w0 ; q0];
 
-uMax = 1000;
-uMin = -1000;
+uMax = 1500;
+uMin = -1500;
 rho = 0;
 h = dt;
 y = zeros(length(initCond),length(t));
@@ -130,7 +133,7 @@ dx = zeros(6,length(t));
 dx(:,1) = [q2phi((qmult(qconj(qOpt(:,1)))*xf(1:4,1)));
            wn(:,1) - omOpt(:,1)];
 u = zeros(3,length(t));
-% u(:,1) = tauOpt(:,1) - K(:,:,1)*dx(:,1);
+u(:,1) = tauOpt(:,1) - K(:,:,1)*dx(:,1);
 yn = zeros(size(y));
 yn(:,1) = y(:,1);
 beta = zeros(3,length(t));
@@ -163,10 +166,13 @@ for ii = 2:length(t)
     y(:,ii) = y(:,ii-1) + (k1+2*k2+2*k3+k4)/6;
 end
 figure;
-plot(t,theta0 - thetaOpt,'b','LineWidth',.5)
+plot(t,thetaOpt,'b','LineWidth',2)
 hold on
-plot(t,theta,'r','LineWidth',1)
-title('Error')
+plot(t,theta,'r','LineWidth',2)
+title('Angle From Goal')
+legend('Open Loop Plan','TVLQR Controlled')
+xlabel('Time (s)')
+ylabel('Angle (deg)')
 
 figure
 subplot(3,1,1)
@@ -180,18 +186,24 @@ plot(t,dx(3,:))
 % figure
 % plot(t,theta)
 figure
-plot(t,vecnorm(omOpt),t,vecnorm(wn))
+plot(t,vecnorm(omOpt),t,vecnorm(wn),'LineWidth',2)
 title('Omega')
+xlabel('Time (s)')
+ylabel('Angular Velocity (rad/s)')
+legend('Open Loop Plan','TVLQR Controlled')
 % figure
 % plot(t,vecnorm(domOpt))
 figure
 subplot(3,1,1)
-plot(t,tauOpt(1,:) - u(1,:))
+plot(t,tauOpt(1,:),t, u(1,:),'LineWidth',2)
 title('Control')
 subplot(3,1,2)
-plot(t,tauOpt(2,:) - u(2,:))
+plot(t,tauOpt(2,:),t, u(2,:),'LineWidth',2)
 subplot(3,1,3)
-plot(t,tauOpt(3,:) - u(3,:))
+plot(t,tauOpt(3,:),t, u(3,:),'LineWidth',2)
+legend('Open Loop Plan','TVLQR Controlled')
+xlabel('Time (s)')
+ylabel('Torque (Nm)')
 
 function drdt = rk4(t,r,J,c,n,A,u)
 mu = 398600;
